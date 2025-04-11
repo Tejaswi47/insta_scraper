@@ -6,9 +6,9 @@ import json
 import time
 
 class InstagramProfileScraper:
-    def __init__(self, cookies_file_path='cookies.json'):
+    def __init__(self, cookies_file_path):
         self.chrome_options = Options()
-        self.chrome_options.add_argument("--headless")
+        # self.chrome_options.add_argument("--headless")
         self.chrome_options.add_argument("--no-sandbox")
         self.chrome_options.add_argument("--disable-dev-shm-usage")
         self.chrome_options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
