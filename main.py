@@ -1,67 +1,127 @@
+import logging
 import random
 from fastapi import FastAPI, Query
 from contextlib import asynccontextmanager
 from scraping_techniques.get_user_info import InstagramProfileScraper
+import uvicorn
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("instagram_scraper.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger("instagram_scraper")
 
 # scraper = None
 scraper2 = None
 scraper3 = None
-scraper4 = None
-scraper5 = None
-scraper6 = None
+# scraper4 = None
+# scraper5 = None
+# scraper6 = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # global scraper
     global scraper2
     global scraper3
-    global scraper4
-    global scraper5
-    global scraper6
+    # global scraper4
+    # global scraper5
+    # global scraper6
     
-    # scraper = InstagramProfileScraper(cookies_file_path="dangergod401_cookies.json")
-    scraper2 = InstagramProfileScraper(cookies_file_path="loopstar_cookies.json")
-    scraper3 = InstagramProfileScraper(cookies_file_path="sfjherbff5_cookies.json")
-    scraper4 = InstagramProfileScraper(cookies_file_path="t65530874_cookies.json")
-    scraper5 = InstagramProfileScraper(cookies_file_path="theamen_cookies.json")
-    scraper6 = InstagramProfileScraper(cookies_file_path="thedanger396_cookies.json")
-
-    print("Scraper initialized and browser opened")
+    logger.info("Starting application and initializing scrapers")
+    
     try:
+        # logger.info("Initializing scraper with dangergod401_cookies.json")
+        # scraper = InstagramProfileScraper(cookies_file_path="dangergod401_cookies.json")
+        
+        logger.info("Initializing scraper2 with loopstar_cookies.json")
+        scraper2 = InstagramProfileScraper(cookies_file_path="loopstar_cookies.json")
+        logger.info("Scraper2 initialized successfully")
+        
+        logger.info("Initializing scraper3 with sfjherbff5_cookies.json")
+        scraper3 = InstagramProfileScraper(cookies_file_path="sfjherbff5_cookies.json")
+        logger.info("Scraper3 initialized successfully")
+        
+        # logger.info("Initializing scraper4 with t65530874_cookies.json")
+        # scraper4 = InstagramProfileScraper(cookies_file_path="t65530874_cookies.json")
+        
+        # logger.info("Initializing scraper5 with theamen_cookies.json")
+        # scraper5 = InstagramProfileScraper(cookies_file_path="theamen_cookies.json")
+        
+        # logger.info("Initializing scraper6 with thedanger396_cookies.json")
+        # scraper6 = InstagramProfileScraper(cookies_file_path="thedanger396_cookies.json")
+
+        logger.info("All scrapers initialized and browsers opened")
         yield
+    except Exception as e:
+        logger.error(f"Error during scraper initialization: {e}")
+        raise
     finally:
-        for s in [scraper2, scraper3, scraper4, scraper5, scraper6]:
+        logger.info("Application shutting down, closing browser instances")
+        for idx, s in enumerate([scraper2, scraper3], 1):
             if s:
                 try:
+                    logger.info(f"Closing scraper {idx}")
                     s.quit()
+                    logger.info(f"Scraper {idx} closed successfully")
                 except Exception as e:
-                    print(f"Error closing scraper: {e}")
-        print("All browsers closed")
+                    logger.error(f"Error closing scraper {idx}: {e}")
+        logger.info("All browsers closed")
 
 app = FastAPI(title="Instagram Profile Scraper API", lifespan=lifespan)
 
 @app.get("/")
 def read_root():
+    logger.info("Root endpoint accessed")
     return {"message": "Instagram Profile Scraper API is running. Use /get_user_info/?username=example to scrape data."}
 
 @app.get("/get_user_info")
 def user_info(username: str = Query(..., description="The username of the user")):
-    global scraper, scraper2, scraper3, scraper4, scraper5, scraper6
-    all_scrapers = [scraper, scraper2, scraper3, scraper4, scraper5, scraper6]
+    logger.info(f"Received request to get info for username: {username}")
+    
+    global scraper2, scraper3
+    all_scrapers = [scraper2, scraper3]
+    
     if not hasattr(user_info, "last_used_scraper_index"):
+        logger.debug("Initializing last_used_scraper_index")
         user_info.last_used_scraper_index = None
+    
     available_indices = list(range(len(all_scrapers)))
     if user_info.last_used_scraper_index is not None:
+        logger.debug(f"Removing last used scraper index {user_info.last_used_scraper_index} from available options")
         available_indices.remove(user_info.last_used_scraper_index)
+    
     chosen_index = random.choice(available_indices)
     current_scraper = all_scrapers[chosen_index]
     user_info.last_used_scraper_index = chosen_index
-    print(f"Using scraper {chosen_index + 1} for request: {username}")
+    logger.info(f"Using scraper {chosen_index + 1} for request: {username}")
+    
     if not hasattr(current_scraper, 'current_tab'):
+        logger.debug("Initializing current_tab attribute for scraper")
         current_scraper.current_tab = None
+    
     if current_scraper.current_tab is not None:
+        logger.debug(f"Closing existing tab with index {current_scraper.current_tab}")
         current_scraper.close_tab(current_scraper.current_tab)
-    new_tab_index, user_data = current_scraper.capture_network_data(username)
+    
+    logger.info(f"Capturing network data for {username}")
+    try:
+        new_tab_index, user_data = current_scraper.capture_network_data(username)
+        logger.info(f"Successfully captured network data in tab {new_tab_index}")
+    except Exception as e:
+        logger.error(f"Error capturing network data: {e}")
+        return {
+            "username": username,
+            "data": None,
+            "status": "error",
+            "message": f"Failed to capture data: {str(e)}"
+        }
+    
+    logger.debug("Initializing user data dictionary")
     user_data_dict = {
         "pk": None,
         "username": None,
@@ -95,6 +155,9 @@ def user_info(username: str = Query(..., description="The username of the user")
         "pronouns": None,
         "fbid_v2": None
     }
+    
+    logger.info("Processing captured network data")
+    user_found = False
     for i in user_data:
         response = user_data[i].get("response_body", False)
         if response:
@@ -103,6 +166,9 @@ def user_info(username: str = Query(..., description="The username of the user")
                 if "user" in data:
                     user_result = data.get("user", False)
                     if user_result:
+                        logger.info(f"Found user data for {username}")
+                        user_found = True
+                        logger.debug("Extracting user profile information")
                         user_data_dict["pk"] = user_result.get("pk")
                         user_data_dict["username"] = user_result.get("username")
                         user_data_dict["full_name"] = user_result.get("full_name")
@@ -134,10 +200,20 @@ def user_info(username: str = Query(..., description="The username of the user")
                         user_data_dict["live_broadcast_id"] = user_result.get("live_broadcast_id")
                         user_data_dict["pronouns"] = user_result.get("pronouns")
                         user_data_dict["fbid_v2"] = user_result.get("fbid_v2")
+    
+    if not user_found:
+        logger.warning(f"No user data found for username: {username}")
+    
+    logger.debug(f"Setting current tab to {new_tab_index}")
     current_scraper.current_tab = new_tab_index    
+    
+    logger.info(f"Successfully processed data for {username}")
     return {
         "username": username,
         "data": user_data_dict,
         "status": "success",
         "scraper_used": chosen_index + 1
     }
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)
