@@ -8,13 +8,13 @@ import time
 class InstagramProfileScraper:
     def __init__(self, cookies_file_path):
         self.chrome_options = Options()
-        # self.chrome_options.add_argument("--headless")
+        self.chrome_options.add_argument("--headless")
         self.chrome_options.add_argument("--no-sandbox")
         self.chrome_options.add_argument("--disable-dev-shm-usage")
         self.chrome_options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
-        # service = Service(executable_path='/usr/bin/chromedriver')
-        # self.driver = webdriver.Chrome(service=service, options=self.chrome_options)
-        self.driver = webdriver.Chrome(options=self.chrome_options)
+        service = Service(executable_path='/usr/bin/chromedriver')
+        self.driver = webdriver.Chrome(service=service, options=self.chrome_options)
+        # self.driver = webdriver.Chrome(options=self.chrome_options)
         self.cookies_file_path = cookies_file_path
         self.login_with_cookies()
         self.tabs = {}  

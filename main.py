@@ -28,41 +28,41 @@ logging.basicConfig(
 )
 logger = logging.getLogger("instagram_scraper")
 
-# scraper = None
-# scraper2 = None
-# scraper3 = None
+scraper = None
+scraper2 = None
+scraper3 = None
 scraper4 = None
-# scraper5 = None
-# scraper6 = None
+scraper5 = None
+scraper6 = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # global scraper
+    global scraper
     global scraper2
-    # global scraper3
+    global scraper3
     global scraper4
-    # global scraper5
+    global scraper5
     global scraper6
     
     logger.info("Starting application and initializing scrapers")
     
     try:
-        # logger.info("Initializing scraper with dangergod401_cookies.json")
-        # scraper = InstagramProfileScraper(cookies_file_path="dangergod401_cookies.json")
+        logger.info("Initializing scraper with dangergod401_cookies.json")
+        scraper = InstagramProfileScraper(cookies_file_path="dangergod401_cookies.json")
         
         logger.info("Initializing scraper2 with loopstar_cookies.json")
         scraper2 = InstagramProfileScraper(cookies_file_path="loopstar_cookies.json")
         logger.info("Scraper2 initialized successfully")
         
-        # logger.info("Initializing scraper3 with sfjherbff5_cookies.json")
-        # scraper3 = InstagramProfileScraper(cookies_file_path="sfjherbff5_cookies.json")
-        # logger.info("Scraper3 initialized successfully")
+        logger.info("Initializing scraper3 with sfjherbff5_cookies.json")
+        scraper3 = InstagramProfileScraper(cookies_file_path="sfjherbff5_cookies.json")
+        logger.info("Scraper3 initialized successfully")
         
         logger.info("Initializing scraper4 with t65530874_cookies.json")
         scraper4 = InstagramPostScraper(cookies_file_path="t65530874_cookies.json")
         
-        # logger.info("Initializing scraper5 with theamen_cookies.json")
-        # scraper5 = InstagramProfileScraper(cookies_file_path="theamen_cookies.json")
+        logger.info("Initializing scraper5 with theamen_cookies.json")
+        scraper5 = InstagramProfileScraper(cookies_file_path="theamen_cookies.json")
         
         logger.info("Initializing scraper6 with thedanger396_cookies.json")
         scraper6 = InstagramProfileScraper(cookies_file_path="thedanger396_cookies.json")
@@ -103,8 +103,8 @@ def read_root():
 def user_info(request:Request,username: str = Query(..., description="The username of the user")):
     logger.info(f"Received request to get info for username: {username}")
 
-    global scraper6, scraper2
-    all_scrapers = [scraper6,scraper2]
+    global scraper6, scraper2, scraper5
+    all_scrapers = [scraper6,scraper2,scraper5]
     
     if not hasattr(user_info, "last_used_scraper_index"):
         logger.debug("Initializing last_used_scraper_index")
@@ -156,8 +156,8 @@ def user_info(request:Request,username: str = Query(..., description="The userna
 def user_post_info(username: str = Query(..., description="The username of the user")):
     logger.info(f"Received request to get info for username: {username}")
     
-    global scraper4
-    all_scrapers = [scraper4]
+    global scraper4, scraper, scraper3
+    all_scrapers = [scraper4, scraper, scraper3]
 
     if not hasattr(user_post_info, "last_used_scraper_index"):
         logger.debug("Initializing last_used_scraper_index")
