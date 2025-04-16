@@ -8,12 +8,13 @@ import time
 class InstagramProfileScraper:
     def __init__(self, cookies_file_path):
         self.chrome_options = Options()
-        self.chrome_options.add_argument("--headless")
+        # self.chrome_options.add_argument("--headless")
         self.chrome_options.add_argument("--no-sandbox")
         self.chrome_options.add_argument("--disable-dev-shm-usage")
         self.chrome_options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
-        service = Service(executable_path='/usr/bin/chromedriver')
-        self.driver = webdriver.Chrome(service=service, options=self.chrome_options)
+        # service = Service(executable_path='/usr/bin/chromedriver')
+        # self.driver = webdriver.Chrome(service=service, options=self.chrome_options)
+        self.driver = webdriver.Chrome(options=self.chrome_options)
         self.cookies_file_path = cookies_file_path
         self.login_with_cookies()
         self.tabs = {}  
@@ -30,7 +31,6 @@ class InstagramProfileScraper:
                     cookie['expiry'] = int(cookie['expiry'])
                 self.driver.add_cookie(cookie)
             self.driver.refresh()
-            time.sleep(3)
             print("Login successful")
         except Exception as e:
             print(f"Error loading cookies: {str(e)}")
@@ -73,11 +73,6 @@ class InstagramProfileScraper:
         print(f"Tab {tab_index}: Navigating to {profile_url}")
         self.driver.get(profile_url)
         print(f"Tab {tab_index}: Waiting for initial page load...")
-        time.sleep(5)
-        print(f"Tab {tab_index}: Scrolling to trigger more requests...")
-        self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight/2);")
-        time.sleep(3)
-        self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         time.sleep(2)
         print(f"Tab {tab_index}: Capturing network logs...")
         logs = self.driver.get_log('performance')
