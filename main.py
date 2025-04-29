@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
         logger.info("Scraper3 initialized successfully")
         
         logger.info("Initializing scraper4 with t65530874_cookies.json")
-        scraper4 = InstagramPostScraper(cookies_file_path="t65530874_cookies.json")
+        scraper4 = InstagramProfileScraper(cookies_file_path="t65530874_cookies.json")
         
         logger.info("Initializing scraper5 with theamen_cookies.json")
         scraper5 = InstagramProfileScraper(cookies_file_path="theamen_cookies.json")
@@ -72,17 +72,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error during scraper initialization: {e}")
         raise
-    finally:
-        logger.info("Application shutting down, closing browser instances")
-        for idx, s in enumerate([scraper6], 1):
-            if s:
-                try:
-                    logger.info(f"Closing scraper {idx}")
-                    s.quit()
-                    logger.info(f"Scraper {idx} closed successfully")
-                except Exception as e:
-                    logger.error(f"Error closing scraper {idx}: {e}")
-        logger.info("All browsers closed")
 
 app = FastAPI(title="Instagram Profile Scraper API", lifespan=lifespan)
 limiter = Limiter(key_func=get_remote_address)
@@ -99,12 +88,11 @@ def read_root():
     return {"message": "Instagram Profile Scraper API is running. Use /get_user_info/?username=example to scrape data."}
 
 @app.get("/get_user_info")
-@limiter.limit("3/min")
 def user_info(request:Request,username: str = Query(..., description="The username of the user")):
     logger.info(f"Received request to get info for username: {username}")
 
-    global scraper6, scraper2, scraper5
-    all_scrapers = [scraper6,scraper2,scraper5]
+    global scraper3,scraper2,scraper,scraper4,scraper5,scraper6
+    all_scrapers = [scraper3,scraper2,scraper,scraper4,scraper5,scraper6]
     
     if not hasattr(user_info, "last_used_scraper_index"):
         logger.debug("Initializing last_used_scraper_index")
@@ -143,6 +131,7 @@ def user_info(request:Request,username: str = Query(..., description="The userna
     user_basic_details = user_info_details(username=username, user_data=user_data)
     logger.debug(f"Setting current tab to {new_tab_index}")
     current_scraper.current_tab = new_tab_index    
+    logger.debug(f"The user details {user_basic_details}")
     
     logger.info(f"Successfully processed data for {username}")
     return {
@@ -156,8 +145,8 @@ def user_info(request:Request,username: str = Query(..., description="The userna
 def user_post_info(username: str = Query(..., description="The username of the user")):
     logger.info(f"Received request to get info for username: {username}")
     
-    global scraper4, scraper, scraper3
-    all_scrapers = [scraper4, scraper, scraper3]
+    global scraper2
+    all_scrapers = [scraper2]
 
     if not hasattr(user_post_info, "last_used_scraper_index"):
         logger.debug("Initializing last_used_scraper_index")
@@ -171,6 +160,7 @@ def user_post_info(username: str = Query(..., description="The username of the u
     current_scraper = all_scrapers[chosen_index]
     user_post_info.last_used_scraper_index = chosen_index
     logger.info(f"Using scraper {chosen_index + 1} for request: {username}")
+    
     if not hasattr(current_scraper, 'current_tab'):
         logger.debug("Initializing current_tab attribute for scraper")
         current_scraper.current_tab = None
@@ -191,8 +181,25 @@ def user_post_info(username: str = Query(..., description="The username of the u
             "status": "error",
             "message": f"Failed to capture data: {str(e)}"
         }
+    
+    # Even if there was an exception during data capture, we might have partial data
+    if not user_data:
+        logger.error("No data captured before timeout")
+        return {
+            "username": username,
+            "data": None,
+            "status": "error",
+            "message": "No data was captured before connection timeout"
+        }
+    
+    # Process whatever data we managed to collect
     user_posts_list = user_post_details(user_data=user_data)
-    return {"data":user_posts_list}
-    # logger.debug("Initializing user data dictionary")
-# if __name__ == "__main__":
-#     uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    current_scraper.current_tab = new_tab_index
+    
+    # Return the posts we collected, even if incomplete due to timeout
+    return {
+        "username": username,
+        "data": user_posts_list,
+        "status": "partial" if len(user_data) < 5 else "success",  # Consider it partial if few responses
+        "message": f"Collected {len(user_data)} GraphQL responses" 
+    }
